@@ -14,7 +14,7 @@ export default function HomePage() {
         <h1 className="text-xl font-bold">SalaryAccess</h1>
 
         <a
-          href="/login"
+          href="/login/"
           className="bg-white text-black px-5 py-2 rounded font-medium"
         >
           Login
@@ -43,7 +43,7 @@ export default function HomePage() {
             </button>
 
             <a
-              href="/login"
+              href="/login/"
               className="border border-gray-600 px-6 py-3 rounded text-gray-300"
             >
               Login

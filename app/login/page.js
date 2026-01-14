@@ -64,14 +64,14 @@ export default function LoginPage() {
         {/* 🔴 IMPORTANT PART: HARD NAVIGATION */}
         <div className="flex gap-3 pt-2">
           <a
-            href="/employer"
+            href="/employer/"
             className="flex-1 bg-black text-white py-2 rounded text-center border border-gray-600"
           >
             Go to Employer
           </a>
 
           <a
-            href="/employee"
+            href="/employee/"
             className="flex-1 border border-gray-600 py-2 rounded text-gray-300 text-center"
           >
             Go to Employee
