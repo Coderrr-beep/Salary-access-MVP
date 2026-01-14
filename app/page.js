@@ -1,65 +1,83 @@
-export default function Home() {
-  return (
-    <main className="min-h-screen bg-gray-50">
-      {/* NAVBAR */}
-      <nav className="flex items-center justify-between px-10 py-6 bg-white border-b">
-        <h1 className="text-xl font-bold">SalaryAccess</h1>
-        <div className="space-x-6">
-          <button className="text-gray-600">Employers</button>
-          <button className="text-gray-600">Employees</button>
-          <button className="bg-black text-white px-4 py-2 rounded">
-            Login
-          </button>
-        </div>
-      </nav>
+"use client";
 
-      {/* HERO */}
-      <section className="max-w-6xl mx-auto px-10 py-20 grid grid-cols-2 gap-12 items-center">
-        <div className="space-y-6">
-          <h2 className="text-5xl font-bold leading-tight">
-            Access your earned salary <br /> before payday
+export default function HomePage() {
+  const handleDemo = () => {
+    alert(
+      "Demo request received ✅\n\nWe will contact the employer shortly.\n"
+    );
+  };
+
+  return (
+    <main className="min-h-screen bg-background text-white">
+      {/* Top Nav */}
+      <header className="flex justify-between items-center px-10 py-6 border-b border-gray-700">
+        <h1 className="text-xl font-bold">SalaryAccess</h1>
+
+        <a
+          href="/login"
+          className="bg-white text-black px-5 py-2 rounded font-medium"
+        >
+          Login
+        </a>
+      </header>
+
+      {/* Hero */}
+      <section className="max-w-6xl mx-auto px-10 py-20 grid md:grid-cols-2 gap-16 items-center">
+        <div>
+          <h2 className="text-4xl font-bold leading-tight">
+            Access your earned salary
+            <br /> before payday
           </h2>
 
-          <p className="text-xl text-gray-600">
+          <p className="text-gray-400 mt-6 max-w-md">
             Not a loan. No interest. Employer-approved salary access
             for startups and SMEs in India.
           </p>
 
-          <div className="flex gap-4">
-            <button className="bg-black text-white px-6 py-3 rounded text-lg">
+          <div className="flex gap-4 mt-8">
+            <button
+              onClick={handleDemo}
+              className="bg-black text-white px-6 py-3 rounded border border-gray-600"
+            >
               Request Demo
             </button>
+
             <a
-              href="/employer"
-              className="border px-6 py-3 rounded text-lg"
+              href="/login"
+              className="border border-gray-600 px-6 py-3 rounded text-gray-300"
             >
-              Employer Dashboard
+              Login
             </a>
           </div>
 
-          <p className="text-sm text-gray-500">
+          <p className="text-xs text-gray-500 mt-6">
             Zero employer cash-flow impact • Auto-settled on payday
           </p>
         </div>
 
-        {/* MOCK CARD */}
-        <div className="bg-white p-8 rounded-xl shadow space-y-4">
-          <h3 className="font-semibold text-lg">Employee Snapshot</h3>
+        {/* Mock Employee Card */}
+        <div className="bg-white text-black rounded-xl p-8 shadow">
+          <h3 className="font-semibold mb-4">Employee Snapshot</h3>
 
-          <div className="flex justify-between text-gray-600">
-            <span>Monthly Salary</span>
-            <span className="font-medium text-black">₹30,000</span>
-          </div>
-          <div className="flex justify-between text-gray-600">
-            <span>Earned till date</span>
-            <span className="font-medium text-green-600">₹12,000</span>
-          </div>
-          <div className="flex justify-between text-gray-600">
-            <span>Available now</span>
-            <span className="font-medium text-black">₹5,000</span>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>Monthly Salary</span>
+              <span>₹30,000</span>
+            </div>
+            <div className="flex justify-between text-green-600">
+              <span>Earned till date</span>
+              <span>₹12,000</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Available now</span>
+              <span>₹5,000</span>
+            </div>
           </div>
 
-          <button className="w-full bg-black text-white py-3 rounded">
+          <button
+            disabled
+            className="mt-6 w-full bg-black text-white py-3 rounded opacity-80 cursor-not-allowed"
+          >
             Withdraw (Mock)
           </button>
         </div>
