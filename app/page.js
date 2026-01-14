@@ -82,6 +82,34 @@ export default function HomePage() {
           </button>
         </div>
       </section>
+            {/* Footer */}
+      <footer className="border-t border-gray-700 mt-20">
+        <div className="max-w-6xl mx-auto px-10 py-8 text-sm text-gray-400">
+          <p className="font-medium text-white mb-2">
+            Team Kanper
+          </p>
+
+          <p>
+            Team Members: Kanishk, Aryan, Manya, Paresha, Animesh
+          </p>
+
+          <p className="mt-2">
+            📞 Contact: <span className="text-gray-300">2354677285</span>
+          </p>
+
+          <p>
+            ✉️ Email:{" "}
+            <span className="text-gray-300">
+              GFG@gmail.com
+            </span>
+          </p>
+
+          <p className="mt-4 text-xs text-gray-500">
+            Built for hackathon demo • Salary Access MVP
+          </p>
+        </div>
+      </footer>
+
     </main>
   );
 }
