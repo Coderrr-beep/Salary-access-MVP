@@ -2,21 +2,51 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export default function EmployeeDashboard() {
   const [employee, setEmployee] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchEmployee = async () => {
       const snapshot = await getDocs(collection(db, "employees"));
       snapshot.forEach((doc) => {
-        setEmployee(doc.data());
+        setEmployee({ id: doc.id, ...doc.data() });
       });
     };
 
     fetchEmployee();
   }, []);
+
+  const handleWithdraw = async () => {
+    if (!employee || employee.available < 1000) return;
+
+    setLoading(true);
+
+    const withdrawAmount = 1000;
+
+    // 1️⃣ Write withdrawal record
+    await addDoc(collection(db, "withdrawals"), {
+      employeeName: employee.name,
+      amount: withdrawAmount,
+      createdAt: serverTimestamp(),
+    });
+
+    // 2️⃣ Update local state (demo-safe)
+    setEmployee((prev) => ({
+      ...prev,
+      available: prev.available - withdrawAmount,
+    }));
+
+    setLoading(false);
+    alert("Withdrawal successful ✅");
+  };
 
   if (!employee) {
     return (
@@ -43,6 +73,14 @@ export default function EmployeeDashboard() {
           <Card title="Earned" value={`₹${employee.earned}`} />
           <Card title="Available" value={`₹${employee.available}`} />
         </div>
+
+        <button
+          onClick={handleWithdraw}
+          disabled={loading}
+          className="bg-white text-black px-6 py-3 rounded font-medium"
+        >
+          {loading ? "Processing..." : "Withdraw ₹1000"}
+        </button>
       </section>
     </main>
   );
