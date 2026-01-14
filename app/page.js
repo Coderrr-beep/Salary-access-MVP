@@ -24,33 +24,33 @@ export default function HomePage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-10 py-20 grid md:grid-cols-2 gap-16 items-center">
         <div>
-          <h2 className="text-4xl font-bold leading-tight">
+          <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight">
             Access your earned salary
             <br /> before payday
           </h2>
 
-          <p className="text-gray-400 mt-6 max-w-md">
-            Not a loan. No interest. Employer-approved salary access
-            for startups and SMEs in India.
+          <p className="text-gray-400 mt-6 max-w-md leading-relaxed">
+            Not a loan. No interest. Employer-approved salary access for
+            startups and SMEs in India.
           </p>
 
           <div className="flex gap-4 mt-8">
             <button
               onClick={handleDemo}
-              className="bg-black text-white px-6 py-3 rounded border border-gray-600"
+              className="bg-white text-black px-6 py-3 rounded-lg font-semibold shadow hover:shadow-md transition"
             >
               Request Demo
             </button>
 
             <a
               href="/login/"
-              className="border border-gray-600 px-6 py-3 rounded text-gray-300"
+              className="border border-gray-600 px-6 py-3 rounded-lg text-gray-300 hover:bg-gray-800 transition"
             >
               Login
             </a>
           </div>
 
-          <p className="text-xs text-gray-500 mt-6">
+          <p className="text-gray-400 mt-6 max-w-md leading-relaxed">
             Zero employer cash-flow impact • Auto-settled on payday
           </p>
         </div>
@@ -82,26 +82,19 @@ export default function HomePage() {
           </button>
         </div>
       </section>
-            {/* Footer */}
+      {/* Footer */}
       <footer className="border-t border-gray-700 mt-20">
         <div className="max-w-6xl mx-auto px-10 py-8 text-sm text-gray-400">
-          <p className="font-medium text-white mb-2">
-            Team Kanper
-          </p>
+          <p className="font-medium text-white mb-2">Team Kanper</p>
 
-          <p>
-            Team Members: Kanishk, Aryan, Manya, Paresha, Animesh
-          </p>
+          <p>Team Members: Kanishk, Aryan, Manya, Paresha, Animesh</p>
 
           <p className="mt-2">
             📞 Contact: <span className="text-gray-300">2354677285</span>
           </p>
 
           <p>
-            ✉️ Email:{" "}
-            <span className="text-gray-300">
-              GFG@gmail.com
-            </span>
+            ✉️ Email: <span className="text-gray-300">GFG@gmail.com</span>
           </p>
 
           <p className="mt-4 text-xs text-gray-500">
@@ -109,7 +102,6 @@ export default function HomePage() {
           </p>
         </div>
       </footer>
-
     </main>
   );
 }

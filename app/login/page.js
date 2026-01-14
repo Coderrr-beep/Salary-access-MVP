@@ -17,11 +17,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const cred = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const cred = await signInWithEmailAndPassword(auth, email, password);
 
       const uid = cred.user.uid;
 
@@ -43,7 +39,7 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen bg-background flex items-center justify-center text-white">
-      <div className="w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl p-8 space-y-6 shadow-lg">
+      <div className="w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl p-10 space-y-6 shadow-xl">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Welcome back</h1>
           <p className="text-gray-400 text-sm">
@@ -70,10 +66,9 @@ export default function LoginPage() {
             />
 
             {error && (
-              <p className="text-red-400 text-sm text-center">
-                {error}
-              </p>
+              <p className="text-red-400 text-sm text-center">{error}</p>
             )}
+            <div className="border-t border-gray-700 pt-6" />
 
             <button
               onClick={handleLogin}
@@ -106,6 +101,9 @@ export default function LoginPage() {
 
         <p className="text-xs text-gray-500 text-center">
           Powered by Firebase Authentication
+        </p>
+        <p className="text-xs text-gray-500 text-center">
+          🔒 Secure authentication • Powered by Firebase
         </p>
       </div>
     </main>
