@@ -1,87 +1,127 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+export default function WithdrawPage() {
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [amount, setAmount] = useState("");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
+
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("employee"); // default
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  /* ---------------- AUTH & DATA ---------------- */
 
-  /* ---------------- LOGIN ---------------- */
-
-  const handleLogin = async () => {
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await signInWithEmailAndPassword(auth, email, password);
-      const uid = res.user.uid;
-
-      const userRef = doc(db, "users", uid);
-      const snap = await getDoc(userRef);
-
-      if (!snap.exists()) {
-        setError("User profile not found. Please sign up.");
-        setLoading(false);
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged(async (u) => {
+      if (!u) {
+        router.push("/login");
         return;
       }
 
-      const userData = snap.data();
+      setUser(u);
 
-      if (userData.role === "employee") {
-        router.push("/employee");
-      } else if (userData.role === "employer") {
-        router.push("/employer");
-      } else {
-        setError("Invalid role assigned.");
+      const snap = await getDoc(doc(db, "users", u.uid));
+      if (snap.exists()) {
+        setUserData(snap.data());
       }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  /* ---------------- SIGNUP (MVP) ---------------- */
+      const q = query(
+        collection(db, "withdrawals"),
+        where("userId", "==", u.uid)
+      );
 
-  const handleSignup = async () => {
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
-      const uid = res.user.uid;
-
-      // Create user profile in Firestore
-      await setDoc(doc(db, "users", uid), {
-        email,
-        role, // employee or employer
-        employerName: role === "employee" ? "Kanper Startup" : null,
-        employerId: role === "employee" ? "kanper" : null,
-        monthlySalary: role === "employee" ? 30000 : null,
-        daysWorked: 0,
-        documentVerified: role === "employee" ? false : true,
-        createdAt: new Date(),
+      const unsubWithdrawals = onSnapshot(q, (snap) => {
+        const list = snap.docs.map((d) => d.data());
+        setWithdrawals(list);
+        setLoading(false);
       });
 
-      if (role === "employee") {
-        router.push("/onboarding");
-      } else {
-        router.push("/employer");
-      }
+      return () => unsubWithdrawals();
+    });
+
+    return () => unsub();
+  }, []);
+
+  /* ---------------- CALCULATIONS ---------------- */
+
+  if (!userData && loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-white">
+        Loading...
+      </div>
+    );
+  }
+
+  const monthlySalary = userData?.monthlySalary || 0;
+  const daysWorked = userData?.daysWorked || 0;
+
+  const dailySalary = monthlySalary / 30;
+  const earnedSalary = dailySalary * daysWorked;
+
+  const totalWithdrawn = withdrawals.reduce(
+    (sum, w) => sum + (w.amount || 0),
+    0
+  );
+
+  const availableLimit = Math.max(
+    earnedSalary * 0.5 - totalWithdrawn,
+    0
+  );
+
+  /* ---------------- WITHDRAW ---------------- */
+
+  const handleWithdraw = async () => {
+    setStatus("");
+
+    const withdrawAmount = Number(amount);
+
+    if (!withdrawAmount || withdrawAmount <= 0) {
+      setStatus("❌ Enter a valid amount");
+      return;
+    }
+
+    if (withdrawAmount > availableLimit) {
+      setStatus("❌ Amount exceeds available limit");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const repaymentDate = new Date();
+      repaymentDate.setMonth(repaymentDate.getMonth() + 1);
+      repaymentDate.setDate(1);
+
+      await addDoc(collection(db, "withdrawals"), {
+        userId: user.uid,
+        amount: withdrawAmount,
+        fee: 20,
+        repaymentDate,
+        createdAt: serverTimestamp(),
+      });
+
+      setStatus(
+        `✅ ₹${withdrawAmount} withdrawal successful. ₹20 fee applied. Repayment scheduled on ${repaymentDate.toDateString()}`
+      );
+      setAmount("");
     } catch (err) {
-      setError(err.message);
+      console.error(err);
+      setStatus("❌ Withdrawal failed");
     } finally {
       setLoading(false);
     }
@@ -90,71 +130,68 @@ export default function LoginPage() {
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">
-          Salary Access Login
-        </h1>
+    <main className="min-h-screen bg-black text-white p-8">
+      <div className="max-w-xl mx-auto space-y-8">
+        <h1 className="text-3xl font-bold">Withdraw Salary</h1>
 
-        <div className="space-y-4">
+        {/* Balance Summary */}
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-2">
+          <p className="text-sm text-gray-400">
+            Earned till date
+          </p>
+          <p className="text-2xl font-bold">
+            ₹{earnedSalary.toFixed(0)}
+          </p>
+
+          <p className="text-sm text-gray-400 mt-4">
+            Available to withdraw
+          </p>
+          <p className="text-xl font-semibold text-green-400">
+            ₹{availableLimit.toFixed(0)}
+          </p>
+
+          <p className="text-xs text-gray-500 mt-2">
+            Max 50% of earned salary · ₹20 flat fee
+          </p>
+        </div>
+
+        {/* Withdraw Box */}
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-4">
           <input
-            type="email"
-            placeholder="Email"
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="number"
+            placeholder="Enter amount"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-600 px-4 py-2 rounded"
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <button
+            onClick={handleWithdraw}
+            disabled={loading}
+            className="w-full bg-white text-black py-3 rounded font-semibold"
+          >
+            {loading ? "Processing..." : "Withdraw Now"}
+          </button>
 
-          {/* Role selector (MVP only) */}
-          <div className="flex gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={role === "employee"}
-                onChange={() => setRole("employee")}
-              />
-              Employee
-            </label>
-
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={role === "employer"}
-                onChange={() => setRole("employer")}
-              />
-              Employer
-            </label>
-          </div>
-
-          {error && (
-            <p className="text-red-400 text-sm">{error}</p>
+          {status && (
+            <p className="text-sm text-yellow-400">
+              {status}
+            </p>
           )}
+        </div>
 
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full bg-white text-black py-2 rounded font-semibold"
-          >
-            {loading ? "Loading..." : "Login"}
-          </button>
-
-          <button
-            onClick={handleSignup}
-            disabled={loading}
-            className="w-full border border-gray-600 py-2 rounded font-semibold"
-          >
-            {loading ? "Loading..." : "Sign Up (MVP)"}
-          </button>
+        {/* Info */}
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
+          <h2 className="font-semibold mb-2">
+            ℹ️ How repayment works
+          </h2>
+          <ul className="text-sm text-gray-400 space-y-1">
+            <li>• Withdrawals are adjusted from next salary</li>
+            <li>• No interest, no loans</li>
+            <li>• ₹20 flat convenience fee</li>
+          </ul>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
