@@ -1,137 +1,169 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import {
   collection,
-  getDocs,
-  addDoc,
-  serverTimestamp,
+  query,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  doc,
+  getDoc,
 } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [withdrawals, setWithdrawals] = useState([]);
-  const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Mock data (hackathon-safe)
-  const monthlySalary = 30000;
-  const earnedSalary = 18000;
-  const availableSalary = 12000;
-  const employerName = "Kanper Startup";
+  const router = useRouter();
+
+  /* ---------------- AUTH + DATA ---------------- */
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
+    const unsubAuth = auth.onAuthStateChanged(async (u) => {
+      if (!u) {
+        router.push("/login");
+        return;
+      }
+
       setUser(u);
-    });
 
-    fetchWithdrawals();
-    return () => unsub();
-  }, []);
+      const userSnap = await getDoc(doc(db, "users", u.uid));
+      if (userSnap.exists()) {
+        setUserData(userSnap.data());
+      }
 
-  const fetchWithdrawals = async () => {
-    const snap = await getDocs(collection(db, "withdrawals"));
-    const list = [];
-    snap.forEach((doc) => list.push(doc.data()));
-    setWithdrawals(list.slice(0, 3));
-  };
+      const q = query(
+        collection(db, "withdrawals"),
+        where("userId", "==", u.uid),
+        orderBy("createdAt", "desc"),
+        limit(5)
+      );
 
-  const handleWithdraw = async () => {
-    setStatus("");
-
-    const withdrawAmount = Number(amount);
-
-    if (!withdrawAmount || withdrawAmount <= 0) {
-      setStatus("❌ Enter a valid amount");
-      return;
-    }
-
-    if (withdrawAmount > availableSalary) {
-      setStatus("❌ Amount exceeds available balance");
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, "withdrawals"), {
-        amount: withdrawAmount,
-        userId: user?.uid || "demo-user",
-        createdAt: serverTimestamp(),
+      const unsubWithdrawals = onSnapshot(q, (snap) => {
+        const list = snap.docs.map((d) => d.data());
+        setWithdrawals(list);
+        setLoading(false);
       });
 
-      setStatus("✅ Withdrawal successful");
-      setAmount("");
-      fetchWithdrawals();
-    } catch (err) {
-      console.error(err);
-      setStatus("❌ Something went wrong. Try again.");
-    }
-  };
+      return () => unsubWithdrawals();
+    });
+
+    return () => unsubAuth();
+  }, []);
+
+  /* ---------------- CALCULATIONS ---------------- */
+
+  if (!userData || loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        Loading your salary dashboard...
+      </div>
+    );
+  }
+
+  const monthlySalary = userData.monthlySalary || 30000;
+  const daysWorked = userData.daysWorked || 0;
+  const dailySalary = monthlySalary / 30;
+  const earnedSalary = dailySalary * daysWorked;
+
+  const totalWithdrawn = withdrawals.reduce(
+    (sum, w) => sum + (w.amount || 0),
+    0
+  );
+
+  const availableLimit = Math.max(
+    earnedSalary * 0.5 - totalWithdrawn,
+    0
+  );
+
+  const progressPercent = Math.min(
+    (earnedSalary / monthlySalary) * 100,
+    100
+  );
+
+  /* ---------------- UI ---------------- */
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
+    <main className="min-h-screen bg-black text-white p-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">
-          👋 Hello{user?.email ? `, ${user.email.split("@")[0]}` : ""}
+          👋 Hi, {user.email.split("@")[0]}
         </h1>
-        <p className="text-gray-400 mt-1">
-          Company: {employerName}
+        <p className="text-gray-400">
+          {userData.employerName || "Kanper Startup"}
         </p>
       </div>
 
-      {/* Salary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      {/* Progress */}
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-8">
+        <div className="flex justify-between text-sm mb-2 text-gray-400">
+          <span>Salary Earned</span>
+          <span>
+            ₹{earnedSalary.toFixed(0)} / ₹{monthlySalary}
+          </span>
+        </div>
+
+        <div className="w-full bg-gray-800 rounded-full h-3">
+          <div
+            className="bg-green-600 h-3 rounded-full transition-all"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        <p className="text-xs text-gray-500 mt-2">
+          {daysWorked} days worked · ₹{dailySalary.toFixed(0)}/day
+        </p>
+      </div>
+
+      {/* Cards */}
+      <div className="grid md:grid-cols-3 gap-6 mb-10">
         <StatCard title="Monthly Salary" value={`₹${monthlySalary}`} />
-        <StatCard title="Earned Till Date" value={`₹${earnedSalary}`} />
+        <StatCard title="Earned Till Date" value={`₹${earnedSalary.toFixed(0)}`} />
         <StatCard
           title="Available to Withdraw"
-          value={`₹${availableSalary}`}
+          value={`₹${availableLimit.toFixed(0)}`}
           highlight
         />
       </div>
 
-      {/* Withdraw Section */}
+      {/* Withdraw CTA */}
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-10">
         <h2 className="text-xl font-semibold mb-2">
-          Withdraw Salary
+          Access Your Salary Early
         </h2>
         <p className="text-sm text-gray-400 mb-4">
-          You can withdraw up to 50% of your earned salary.
+          Withdraw up to 50% of earned salary · ₹20 flat fee · No interest
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Enter amount (₹)"
-            className="flex-1 bg-gray-800 border border-gray-600 px-4 py-2 rounded text-white"
-          />
-          <button
-            onClick={handleWithdraw}
-            className="bg-white text-black px-6 py-2 rounded font-medium hover:bg-gray-200"
-          >
-            Withdraw
-          </button>
-        </div>
+        <button
+          onClick={() => router.push("/withdraw")}
+          disabled={availableLimit <= 0}
+          className="bg-white text-black px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
+        >
+          Withdraw Now
+        </button>
 
-        {status && (
-          <p className="mt-3 text-sm text-yellow-400">
-            {status}
-          </p>
-        )}
+        <p className="text-xs text-gray-500 mt-3">
+          Repayment automatically adjusted on next payday
+        </p>
       </div>
 
       {/* Recent Withdrawals */}
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-10">
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
         <h2 className="text-xl font-semibold mb-4">
           Recent Withdrawals
         </h2>
 
         {withdrawals.length === 0 ? (
           <p className="text-gray-400 text-sm">
-            No withdrawals yet.
+            No withdrawals yet
           </p>
         ) : (
           <ul className="space-y-3">
@@ -142,27 +174,18 @@ export default function EmployeeDashboard() {
               >
                 <span>₹{w.amount}</span>
                 <span className="text-gray-400 text-sm">
-                  {w.createdAt ? "Recently" : ""}
+                  Fee ₹{w.fee || 20}
                 </span>
               </li>
             ))}
           </ul>
         )}
       </div>
-
-      {/* Info Card */}
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-lg font-semibold mb-2">
-          ℹ️ How Salary Access Works
-        </h2>
-        <p className="text-sm text-gray-400">
-          Withdrawals are adjusted from your next salary cycle.
-          No interest. No hidden charges.
-        </p>
-      </div>
-    </div>
+    </main>
   );
 }
+
+/* ---------------- CARD ---------------- */
 
 function StatCard({ title, value, highlight }) {
   return (
