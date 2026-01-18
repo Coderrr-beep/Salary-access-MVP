@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "salary-access-mvp"
-  }
+    "default": "salary-access-mvp",
+    "satging": "salary-access-mvp"
+  },
+  "targets": {},
+  "etags": {}
 }
