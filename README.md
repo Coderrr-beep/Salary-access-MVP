@@ -6,7 +6,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 Early Salary Access platform built for hackathons, allowing employees to withdraw earned salary before payday — inspired by products like Earned Wage Access (EWA).
 
 🔗 **Live Demo:**  
-https://salary-access-mvp.web.app
+https://salary-access-mvp.web.app/
 
 ---
 
@@ -63,7 +63,6 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 or simply click on https://salary-access-mvp.web.app
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+https://salary-access-mvp.web.app/
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
