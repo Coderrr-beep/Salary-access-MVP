@@ -1,3 +1,4 @@
+**PLS NOTE THAT THIS MVP IS STILL IN PRODUCTION PHASE,SO SOME OF THE FEATURES MENTIONED ARE STILL NOT COMMITED YET**
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 
