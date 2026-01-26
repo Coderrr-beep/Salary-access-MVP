@@ -87,7 +87,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-10 py-8 text-sm text-gray-400">
           <p className="font-medium text-white mb-2">Team Kanper</p>
 
-          <p>Team Members: Kanishk, Aryan, Manya, Paresha, Animesh</p>
+          <p>Team Members: Kanishk, Aryan, Manya, Paresha, Animish</p>
 
           <p className="mt-2">
             📞 Contact: <span className="text-gray-300">2354677285</span>
