@@ -13,6 +13,7 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import AiAdvisor from "@/components/AiAdvisor";
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
@@ -57,7 +58,7 @@ export default function EmployeeDashboard() {
     return () => unsubAuth();
   }, []);
 
-  /* ---------------- CALCULATIONS ---------------- */
+  /* ---------------- LOADING ---------------- */
 
   if (!userData || loading) {
     return (
@@ -66,6 +67,8 @@ export default function EmployeeDashboard() {
       </div>
     );
   }
+
+  /* ---------------- CALCULATIONS ---------------- */
 
   const monthlySalary = userData.monthlySalary || 30000;
   const daysWorked = userData.daysWorked || 0;
@@ -122,10 +125,13 @@ export default function EmployeeDashboard() {
         </p>
       </div>
 
-      {/* Cards */}
+      {/* Stats */}
       <div className="grid md:grid-cols-3 gap-6 mb-10">
         <StatCard title="Monthly Salary" value={`₹${monthlySalary}`} />
-        <StatCard title="Earned Till Date" value={`₹${earnedSalary.toFixed(0)}`} />
+        <StatCard
+          title="Earned Till Date"
+          value={`₹${earnedSalary.toFixed(0)}`}
+        />
         <StatCard
           title="Available to Withdraw"
           value={`₹${availableLimit.toFixed(0)}`}
@@ -156,7 +162,7 @@ export default function EmployeeDashboard() {
       </div>
 
       {/* Recent Withdrawals */}
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-10">
         <h2 className="text-xl font-semibold mb-4">
           Recent Withdrawals
         </h2>
@@ -181,6 +187,16 @@ export default function EmployeeDashboard() {
           </ul>
         )}
       </div>
+
+      {/* 🤖 AI FINANCIAL ADVISOR */}
+      <AiAdvisor
+        context={{
+          monthlySalary,
+          earnedSalary,
+          availableLimit,
+          daysWorked,
+        }}
+      />
     </main>
   );
 }
