@@ -16,8 +16,8 @@ import { useRouter } from "next/navigation";
 export default function EmployerDashboard() {
   const [company, setCompany] = useState(null);
   const [employees, setEmployees] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [attendanceStatus, setAttendanceStatus] = useState({});
   const router = useRouter();
 
   /* ---------------- AUTH ---------------- */
@@ -31,24 +31,24 @@ export default function EmployerDashboard() {
 
   /* ---------------- FETCH COMPANY ---------------- */
 
-  const fetchCompany = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "companies"));
-      snapshot.forEach((doc) => {
-        setCompany({ id: doc.id, ...doc.data() });
-      });
-    } catch (err) {
-      console.error("Error fetching company:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const fetchCompany = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "companies"));
+        snapshot.forEach((doc) => {
+          setCompany({ id: doc.id, ...doc.data() });
+        });
+      } catch (err) {
+        console.error("Error fetching company:", err);
+      }
+    };
+
+    fetchCompany();
+  }, []);
 
   /* ---------------- FETCH EMPLOYEES ---------------- */
 
   useEffect(() => {
-    fetchCompany();
-
     const q = query(
       collection(db, "users"),
       where("role", "==", "employee")
@@ -60,12 +60,27 @@ export default function EmployerDashboard() {
         ...d.data(),
       }));
       setEmployees(list);
+      setLoading(false);
     });
 
     return () => unsub();
   }, []);
 
-  /* ---------------- MARK ATTENDANCE (CORE FIX) ---------------- */
+  /* ---------------- FETCH WITHDRAWALS ---------------- */
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "withdrawals"),
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => d.data());
+        setWithdrawals(list);
+      }
+    );
+
+    return () => unsub();
+  }, []);
+
+  /* ---------------- ATTENDANCE ---------------- */
 
   const markAttendance = async (employeeId, status, currentDaysWorked) => {
     try {
@@ -74,18 +89,13 @@ export default function EmployerDashboard() {
           daysWorked: (currentDaysWorked || 0) + 1,
         });
       }
-
-      setAttendanceStatus((prev) => ({
-        ...prev,
-        [employeeId]: status,
-      }));
     } catch (err) {
-      console.error("Error marking attendance:", err);
+      console.error("Attendance error:", err);
       alert("Failed to mark attendance");
     }
   };
 
-  /* ---------------- LOADING GUARD ---------------- */
+  /* ---------------- LOADING ---------------- */
 
   if (loading || !company) {
     return (
@@ -95,61 +105,106 @@ export default function EmployerDashboard() {
     );
   }
 
-  /* ---------------- UI (UNCHANGED) ---------------- */
+  /* ---------------- STATS (REAL DATA) ---------------- */
+
+  const totalEmployees = employees.length;
+
+  // Withdrawals Today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const withdrawalsToday = withdrawals.filter((w) => {
+    if (!w.createdAt?.toDate) return false;
+    return w.createdAt.toDate() >= today;
+  }).length;
+
+  // Total Advanced (₹)
+  const totalAdvanced = withdrawals.reduce(
+    (sum, w) => sum + (w.amount || 0),
+    0
+  );
+
+  /* ---------------- UI ---------------- */
 
   return (
-    <main className="min-h-screen bg-background text-white">
-      <header className="border-b border-gray-700 px-10 py-6">
-        <h1 className="text-3xl font-bold">{company.name}</h1>
-        <p className="text-gray-400 mt-1">Employer Dashboard</p>
-        <span className="inline-block mt-3 text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-300">
-          Employer Account
-        </span>
+    <main className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white">
+      {/* HEADER */}
+      <header className="border-b border-gray-800 px-10 py-8">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold tracking-tight">
+            {company.name}
+          </h1>
+          <p className="text-gray-400 mt-1">
+            Employer Dashboard
+          </p>
+
+          <span className="inline-block mt-4 text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-300">
+            Employer Account
+          </span>
+        </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-10 py-10 space-y-10">
-        {/* Summary Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <Card
-            title="Total Employees"
-            value={company.employeesCount}
-            subtitle="Active employees"
-          />
-          <Card
-            title="Withdrawals Today"
-            value="—"
-            subtitle="Demo data"
-          />
-          <Card
-            title="Total Advanced"
-            value="—"
-            subtitle="Recovered on payday"
-          />
+      {/* CONTENT */}
+      <section className="max-w-6xl mx-auto px-10 py-12 space-y-12">
+        {/* OVERVIEW */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">
+            Company Overview
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <StatCard
+              title="Total Employees"
+              value={totalEmployees}
+              subtitle="Active employees"
+            />
+            <StatCard
+              title="Withdrawals Today"
+              value={withdrawalsToday}
+              subtitle="Employees accessed salary"
+            />
+            <StatCard
+              title="Total Advanced"
+              value={`₹${totalAdvanced}`}
+              subtitle="Recovered on payday"
+              highlight
+            />
+          </div>
         </div>
 
-        {/* Employer Assurance */}
-        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8">
-          <h2 className="text-xl font-semibold mb-4">Employer Assurance</h2>
-          <ul className="space-y-3 text-gray-300">
-            <li>✅ No impact on company cash flow</li>
-            <li>✅ Auto-deducted on payroll day</li>
-            <li>✅ No loans or employer liability</li>
-            <li>✅ Employee-initiated withdrawals only</li>
-          </ul>
+        {/* ASSURANCE */}
+        <div className="bg-gray-900/60 backdrop-blur border border-gray-800 rounded-2xl p-8">
+          <h2 className="text-xl font-semibold mb-6">
+            Employer Assurance
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-4 text-gray-300">
+            <Assurance text="No impact on company cash flow" />
+            <Assurance text="Auto-deducted on payroll day" />
+            <Assurance text="No loans or employer liability" />
+            <Assurance text="Employee-initiated withdrawals only" />
+          </div>
         </div>
 
-        {/* Attendance */}
-        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8">
-          <h2 className="text-xl font-semibold mb-6">Mark Attendance</h2>
+        {/* ATTENDANCE */}
+        <div className="bg-gray-900/60 backdrop-blur border border-gray-800 rounded-2xl p-8">
+          <h2 className="text-xl font-semibold mb-2">
+            Attendance & Salary Sync
+          </h2>
+          <p className="text-sm text-gray-400 mb-6">
+            Mark attendance to instantly update earned salary.
+          </p>
 
           {employees.length === 0 ? (
-            <p className="text-gray-400 text-sm">No employees found.</p>
+            <p className="text-gray-400 text-sm">
+              No employees found.
+            </p>
           ) : (
             <div className="space-y-3">
               {employees.map((emp) => (
                 <div
                   key={emp.id}
-                  className="flex items-center justify-between bg-gray-800 p-4 rounded-lg"
+                  className="flex items-center justify-between bg-gray-800/60 px-5 py-4 rounded-xl border border-gray-700"
                 >
                   <div>
                     <p className="font-medium">
@@ -160,28 +215,21 @@ export default function EmployerDashboard() {
                     </p>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <button
                       onClick={() =>
-                        markAttendance(
-                          emp.id,
-                          "present",
-                          emp.daysWorked
-                        )
+                        markAttendance(emp.id, "present", emp.daysWorked)
                       }
-                      className="px-4 py-2 rounded text-sm font-medium bg-green-600 text-white"
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-500 transition"
                     >
                       ✓ Present
                     </button>
+
                     <button
                       onClick={() =>
-                        markAttendance(
-                          emp.id,
-                          "absent",
-                          emp.daysWorked
-                        )
+                        markAttendance(emp.id, "absent", emp.daysWorked)
                       }
-                      className="px-4 py-2 rounded text-sm font-medium bg-gray-700 text-gray-300"
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 transition"
                     >
                       ✗ Absent
                     </button>
@@ -196,12 +244,29 @@ export default function EmployerDashboard() {
   );
 }
 
-function Card({ title, value, subtitle }) {
+/* ---------------- COMPONENTS ---------------- */
+
+function StatCard({ title, value, subtitle, highlight }) {
   return (
-    <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl">
-      <p className="text-gray-400 text-sm">{title}</p>
+    <div
+      className={`rounded-2xl p-6 border ${
+        highlight
+          ? "bg-green-900/20 border-green-700"
+          : "bg-gray-900/60 border-gray-800"
+      }`}
+    >
+      <p className="text-sm text-gray-400">{title}</p>
       <p className="text-3xl font-bold mt-2">{value}</p>
       <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+    </div>
+  );
+}
+
+function Assurance({ text }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-green-400">✔</span>
+      <span>{text}</span>
     </div>
   );
 }
