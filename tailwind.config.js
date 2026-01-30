@@ -4,6 +4,7 @@ const config = {
   content: [
     "./app/**/*.{js,jsx}",
     "./components/**/*.{js,jsx}",
+    "./component/**/*.{js,ts,jsx,tsx}", 
   ],
   theme: {
     extend: {},

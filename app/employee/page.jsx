@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
@@ -68,6 +69,12 @@ export default function EmployeeDashboard() {
     );
   }
 
+  /* ---------------- APPROVAL CHECK ---------------- */
+
+  const isApproved =
+    userData.verificationStatus === "approved" &&
+    userData.documentVerified === true;
+
   /* ---------------- CALCULATIONS ---------------- */
 
   const monthlySalary = userData.monthlySalary || 30000;
@@ -100,9 +107,19 @@ export default function EmployeeDashboard() {
           👋 Hi, {user.email.split("@")[0]}
         </h1>
         <p className="text-gray-400">
-          {userData.employerName || "Kanper Startup"}
+          {userData.employerName || "Your Company"}
         </p>
       </div>
+
+      {/* 🔒 Approval Banner (TEXT ONLY) */}
+      {!isApproved && (
+        <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl p-4 mb-6">
+          <p className="text-sm text-yellow-300">
+            ⏳ Your documents are under employer review. Salary withdrawal
+            will be enabled once approved.
+          </p>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-8">
@@ -150,15 +167,17 @@ export default function EmployeeDashboard() {
 
         <button
           onClick={() => router.push("/withdraw")}
-          disabled={availableLimit <= 0}
+          disabled={!isApproved || availableLimit <= 0}
           className="bg-white text-black px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
         >
           Withdraw Now
         </button>
 
-        <p className="text-xs text-gray-500 mt-3">
-          Repayment automatically adjusted on next payday
-        </p>
+        {!isApproved && (
+          <p className="text-xs text-gray-500 mt-3">
+            Waiting for employer approval
+          </p>
+        )}
       </div>
 
       {/* Recent Withdrawals */}

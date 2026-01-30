@@ -109,6 +109,7 @@ export default function WithdrawPage() {
 
       await addDoc(collection(db, "withdrawals"), {
         userId: user.uid,
+        employerId: userData.employerId, // 🔑 FIX (THIS WAS MISSING)
         amount: withdrawAmount,
         fee: 20,
         repaymentDate,
@@ -127,14 +128,13 @@ export default function WithdrawPage() {
     }
   };
 
-  /* ---------------- UI ---------------- */
+  /* ---------------- UI (UNCHANGED) ---------------- */
 
   return (
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-xl mx-auto space-y-8">
         <h1 className="text-3xl font-bold">Withdraw Salary</h1>
 
-        {/* Balance Summary */}
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-2">
           <p className="text-sm text-gray-400">
             Earned till date
@@ -155,7 +155,6 @@ export default function WithdrawPage() {
           </p>
         </div>
 
-        {/* Withdraw Box */}
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-4">
           <input
             type="number"
@@ -180,7 +179,6 @@ export default function WithdrawPage() {
           )}
         </div>
 
-        {/* Info */}
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
           <h2 className="font-semibold mb-2">
             ℹ️ How repayment works

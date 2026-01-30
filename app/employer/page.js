@@ -8,20 +8,18 @@ import {
   query,
   where,
   onSnapshot,
-  doc,
   updateDoc,
+  doc,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function EmployerDashboard() {
-  const [company, setCompany] = useState(null);
+  const [employer, setEmployer] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  /* ---------------- AUTH ---------------- */
-
+  /* -------- AUTH -------- */
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((user) => {
       if (!user) router.push("/login");
@@ -29,75 +27,60 @@ export default function EmployerDashboard() {
     return () => unsub();
   }, []);
 
-  /* ---------------- FETCH COMPANY ---------------- */
-
+  /* -------- FETCH EMPLOYER -------- */
   useEffect(() => {
-    const fetchCompany = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, "companies"));
-        snapshot.forEach((doc) => {
-          setCompany({ id: doc.id, ...doc.data() });
-        });
-      } catch (err) {
-        console.error("Error fetching company:", err);
+    const fetchEmployer = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const q = query(
+        collection(db, "employers"),
+        where("uid", "==", user.uid)
+      );
+
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        setEmployer(snap.docs[0].data());
       }
     };
 
-    fetchCompany();
+    fetchEmployer();
   }, []);
 
-  /* ---------------- FETCH EMPLOYEES ---------------- */
-
+  /* -------- FETCH EMPLOYEES -------- */
   useEffect(() => {
+    if (!employer) return;
+
     const q = query(
       collection(db, "users"),
-      where("role", "==", "employee")
+      where("role", "==", "employee"),
+      where("employerId", "==", employer.employerId)
     );
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-      setEmployees(list);
-      setLoading(false);
+    return onSnapshot(q, (snap) => {
+      setEmployees(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      );
     });
+  }, [employer]);
 
-    return () => unsub();
-  }, []);
-
-  /* ---------------- FETCH WITHDRAWALS ---------------- */
-
+  /* -------- FETCH WITHDRAWALS -------- */
   useEffect(() => {
-    const unsub = onSnapshot(
+    if (!employer) return;
+
+    const q = query(
       collection(db, "withdrawals"),
-      (snapshot) => {
-        const list = snapshot.docs.map((d) => d.data());
-        setWithdrawals(list);
-      }
+      where("employerId", "==", employer.employerId)
     );
 
-    return () => unsub();
-  }, []);
+    return onSnapshot(q, (snap) => {
+      setWithdrawals(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      );
+    });
+  }, [employer]);
 
-  /* ---------------- ATTENDANCE ---------------- */
-
-  const markAttendance = async (employeeId, status, currentDaysWorked) => {
-    try {
-      if (status === "present") {
-        await updateDoc(doc(db, "users", employeeId), {
-          daysWorked: (currentDaysWorked || 0) + 1,
-        });
-      }
-    } catch (err) {
-      console.error("Attendance error:", err);
-      alert("Failed to mark attendance");
-    }
-  };
-
-  /* ---------------- LOADING ---------------- */
-
-  if (loading || !company) {
+  if (!employer) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">
         Loading employer dashboard...
@@ -105,159 +88,164 @@ export default function EmployerDashboard() {
     );
   }
 
-  /* ---------------- STATS (REAL DATA) ---------------- */
+  /* -------- CALCULATIONS -------- */
 
-  const totalEmployees = employees.length;
-
-  // Withdrawals Today
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const withdrawalsToday = withdrawals.filter((w) => {
-    if (!w.createdAt?.toDate) return false;
-    return w.createdAt.toDate() >= today;
-  }).length;
-
-  // Total Advanced (₹)
   const totalAdvanced = withdrawals.reduce(
     (sum, w) => sum + (w.amount || 0),
     0
   );
 
-  /* ---------------- UI ---------------- */
+  const pendingVerifications = employees.filter(
+    (e) => e.verificationStatus === "pending"
+  ).length;
+
+  const activeEmployees = employees.filter(
+    (e) => e.verificationStatus === "approved"
+  ).length;
+
+  const totalEarned = employees.reduce((sum, e) => {
+    const daily = (e.monthlySalary || 0) / 30;
+    return sum + daily * (e.daysWorked || 0);
+  }, 0);
+
+  /* -------- ATTENDANCE -------- */
+
+  const markPresent = async (emp) => {
+    if (emp.verificationStatus !== "approved") return;
+
+    await updateDoc(doc(db, "users", emp.id), {
+      daysWorked: (emp.daysWorked || 0) + 1,
+    });
+  };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black text-white">
+    <main className="min-h-screen bg-black text-white px-10 py-12">
       {/* HEADER */}
-      <header className="border-b border-gray-800 px-10 py-8">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold tracking-tight">
-            {company.name}
-          </h1>
-          <p className="text-gray-400 mt-1">
-            Employer Dashboard
+      <h1 className="text-3xl font-bold">{employer.company}</h1>
+      <p className="text-gray-400 mb-6">Employer Dashboard</p>
+
+      {/* VERIFY BUTTON */}
+      <button
+        onClick={() => router.push("/employer/verification")}
+        className="mb-10 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:scale-105 transition"
+      >
+        Verify Employees
+      </button>
+
+      {/* STATS */}
+      <div className="grid md:grid-cols-5 gap-6 mb-12">
+        <Stat title="Total Employees" value={employees.length} />
+        <Stat title="Active Employees" value={activeEmployees} />
+        <Stat title="Pending Verifications" value={pendingVerifications} />
+        <Stat title="Withdrawals" value={withdrawals.length} />
+        <Stat title="Total Advanced" value={`₹${totalAdvanced}`} />
+      </div>
+
+      {/* EMPLOYER ASSURANCE */}
+      <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-8 mb-12">
+        <h2 className="text-xl font-semibold mb-6">
+          Employer Assurance
+        </h2>
+
+        <div className="grid md:grid-cols-2 gap-4 text-gray-300">
+          <Assurance text="No upfront capital required" />
+          <Assurance text="Salary auto-deducted on payroll day" />
+          <Assurance text="Zero interest, zero loans" />
+          <Assurance text="Employee-initiated withdrawals only" />
+          <Assurance text="No balance-sheet or compliance risk" />
+          <Assurance text="Fully auditable & transparent" />
+        </div>
+      </div>
+
+      {/* MONTHLY SNAPSHOT */}
+      <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-8 mb-12">
+        <h2 className="text-xl font-semibold mb-6">
+          This Month at a Glance
+        </h2>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <Stat
+            title="Total Salary Earned"
+            value={`₹${Math.round(totalEarned)}`}
+          />
+          <Stat
+            title="Withdrawn by Employees"
+            value={`₹${totalAdvanced}`}
+          />
+          <Stat
+            title="Net Payroll Adjustment"
+            value={`₹${Math.max(totalEarned - totalAdvanced, 0)}`}
+          />
+        </div>
+      </div>
+
+      {/* ATTENDANCE */}
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-8">
+        <h2 className="text-xl font-semibold mb-6">
+          Attendance & Salary Sync
+        </h2>
+
+        {employees.length === 0 ? (
+          <p className="text-gray-400 text-sm">
+            No employees found.
           </p>
-
-          <span className="inline-block mt-4 text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-300">
-            Employer Account
-          </span>
-        </div>
-      </header>
-
-      {/* CONTENT */}
-      <section className="max-w-6xl mx-auto px-10 py-12 space-y-12">
-        {/* OVERVIEW */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">
-            Company Overview
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            <StatCard
-              title="Total Employees"
-              value={totalEmployees}
-              subtitle="Active employees"
-            />
-            <StatCard
-              title="Withdrawals Today"
-              value={withdrawalsToday}
-              subtitle="Employees accessed salary"
-            />
-            <StatCard
-              title="Total Advanced"
-              value={`₹${totalAdvanced}`}
-              subtitle="Recovered on payday"
-              highlight
-            />
-          </div>
-        </div>
-
-        {/* ASSURANCE */}
-        <div className="bg-gray-900/60 backdrop-blur border border-gray-800 rounded-2xl p-8">
-          <h2 className="text-xl font-semibold mb-6">
-            Employer Assurance
-          </h2>
-
-          <div className="grid md:grid-cols-2 gap-4 text-gray-300">
-            <Assurance text="No impact on company cash flow" />
-            <Assurance text="Auto-deducted on payroll day" />
-            <Assurance text="No loans or employer liability" />
-            <Assurance text="Employee-initiated withdrawals only" />
-          </div>
-        </div>
-
-        {/* ATTENDANCE */}
-        <div className="bg-gray-900/60 backdrop-blur border border-gray-800 rounded-2xl p-8">
-          <h2 className="text-xl font-semibold mb-2">
-            Attendance & Salary Sync
-          </h2>
-          <p className="text-sm text-gray-400 mb-6">
-            Mark attendance to instantly update earned salary.
-          </p>
-
-          {employees.length === 0 ? (
-            <p className="text-gray-400 text-sm">
-              No employees found.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {employees.map((emp) => (
-                <div
-                  key={emp.id}
-                  className="flex items-center justify-between bg-gray-800/60 px-5 py-4 rounded-xl border border-gray-700"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {emp.email?.split("@")[0]}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Days worked: {emp.daysWorked || 0}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() =>
-                        markAttendance(emp.id, "present", emp.daysWorked)
-                      }
-                      className="px-4 py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-500 transition"
-                    >
-                      ✓ Present
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        markAttendance(emp.id, "absent", emp.daysWorked)
-                      }
-                      className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 transition"
-                    >
-                      ✗ Absent
-                    </button>
-                  </div>
+        ) : (
+          <div className="space-y-4">
+            {employees.map((emp) => (
+              <div
+                key={emp.id}
+                className="flex items-center justify-between bg-gray-800 px-5 py-4 rounded-xl border border-gray-700"
+              >
+                <div>
+                  <p className="font-medium">
+                    {emp.name || emp.email}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Days worked: {emp.daysWorked || 0}
+                  </p>
+                  <span
+                    className={`inline-block mt-1 text-xs px-2 py-1 rounded-full ${
+                      emp.verificationStatus === "approved"
+                        ? "bg-green-800 text-green-300"
+                        : "bg-yellow-800 text-yellow-300"
+                    }`}
+                  >
+                    {emp.verificationStatus}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => markPresent(emp)}
+                    disabled={emp.verificationStatus !== "approved"}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-500 disabled:opacity-50"
+                  >
+                    ✓ Present
+                  </button>
+
+                  <button
+                    disabled
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 opacity-60 cursor-not-allowed"
+                  >
+                    ✗ Absent
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
 
 /* ---------------- COMPONENTS ---------------- */
 
-function StatCard({ title, value, subtitle, highlight }) {
+function Stat({ title, value }) {
   return (
-    <div
-      className={`rounded-2xl p-6 border ${
-        highlight
-          ? "bg-green-900/20 border-green-700"
-          : "bg-gray-900/60 border-gray-800"
-      }`}
-    >
+    <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
       <p className="text-sm text-gray-400">{title}</p>
-      <p className="text-3xl font-bold mt-2">{value}</p>
-      <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+      <p className="text-2xl font-bold mt-2">{value}</p>
     </div>
   );
 }

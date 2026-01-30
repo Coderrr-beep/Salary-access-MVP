@@ -1,19 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function HomePage() {
-  const handleDemo = () => {
-    alert("Demo request received ✅\n\nWe’ll reach out shortly.");
-  };
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [form, setForm] = useState({
+    company: "",
+    name: "",
+    email: "",
+    phone: "",
+    size: "",
+  });
 
   return (
     <main className="min-h-screen bg-background text-white overflow-hidden">
       {/* ================= NAVBAR ================= */}
       <header className="fixed top-0 w-full z-50 bg-black/70 backdrop-blur border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-10 py-4 flex items-center justify-between">
-          {/* LEFT: BRAND (ONLY ONE LOGO) */}
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -22,22 +31,13 @@ export default function HomePage() {
             SalarySync
           </motion.div>
 
-          {/* RIGHT: NAV LINKS */}
           <nav className="flex items-center gap-6">
-            <Link
-              href="/"
-              className="text-gray-300 hover:text-white transition"
-            >
+            <Link href="/" className="text-gray-300 hover:text-white transition">
               Home
             </Link>
-
-            <Link
-              href="/about"
-              className="text-gray-300 hover:text-white transition"
-            >
+            <Link href="/about" className="text-gray-300 hover:text-white transition">
               About Us
             </Link>
-
             <Link
               href="/login"
               className="bg-white text-black px-5 py-2 rounded-lg font-semibold hover:scale-105 transition"
@@ -48,12 +48,10 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Spacer for fixed navbar */}
       <div className="h-20" />
 
       {/* ================= HERO ================= */}
       <section className="max-w-7xl mx-auto px-10 py-28 grid md:grid-cols-2 gap-20 items-center">
-        {/* LEFT CONTENT */}
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
@@ -70,12 +68,11 @@ export default function HomePage() {
             No loans. No interest. Zero employer risk.
           </p>
 
-          {/* CTA */}
           <div className="mt-10">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.97 }}
-              onClick={handleDemo}
+              onClick={() => setOpen(true)}
               className="bg-white text-black px-8 py-4 rounded-xl font-semibold shadow-xl"
             >
               Request Demo
@@ -97,9 +94,7 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full" />
 
           <div className="relative bg-white text-black rounded-2xl p-8 shadow-2xl">
-            <h3 className="font-semibold text-lg mb-6">
-              Employee Snapshot
-            </h3>
+            <h3 className="font-semibold text-lg mb-6">Employee Snapshot</h3>
 
             <div className="space-y-3 text-sm">
               <Row label="Monthly Salary" value="₹30,000" />
@@ -123,16 +118,8 @@ export default function HomePage() {
 
       {/* ================= ABOUT ================= */}
       <section className="border-t border-gray-800 py-20">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="max-w-5xl mx-auto px-10 text-center"
-        >
-          <h2 className="text-3xl font-bold mb-4">
-            Why SalarySync?
-          </h2>
-
+        <div className="max-w-5xl mx-auto px-10 text-center">
+          <h2 className="text-3xl font-bold mb-4">Why SalarySync?</h2>
           <p className="text-gray-400 leading-relaxed max-w-3xl mx-auto">
             Payroll runs monthly, but life runs daily. SalarySync bridges this
             gap by turning salary into a real-time stream — empowering workers
@@ -144,7 +131,7 @@ export default function HomePage() {
             <Feature title="Real-Time Sync" desc="Instant balance updates" />
             <Feature title="Employer Safe" desc="No cash-flow impact" />
           </div>
-        </motion.div>
+        </div>
       </section>
 
       {/* ================= FOOTER ================= */}
@@ -161,6 +148,97 @@ export default function HomePage() {
           </p>
         </div>
       </footer>
+
+      {/* ================= DEMO MODAL ================= */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-white text-black rounded-2xl w-full max-w-md p-8 relative">
+            <button
+              onClick={() => setOpen(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-black"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-2xl font-bold mb-6">Request a Demo</h3>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                  await addDoc(collection(db, "demoRequests"), {
+                    ...form,
+                    createdAt: serverTimestamp(),
+                  });
+
+                  alert("Demo request submitted successfully ✅");
+
+                  setForm({
+                    company: "",
+                    name: "",
+                    email: "",
+                    phone: "",
+                    size: "",
+                  });
+                  setOpen(false);
+                } catch (err) {
+                  console.error(err);
+                  alert("Something went wrong. Try again.");
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              {["company", "name", "email", "phone"].map((field) => (
+                <input
+                  key={field}
+                  required
+                  type={field === "email" ? "email" : "text"}
+                  placeholder={
+                    field === "company"
+                      ? "Company Name"
+                      : field === "name"
+                      ? "Your Name"
+                      : field === "email"
+                      ? "Work Email"
+                      : "Phone Number"
+                  }
+                  className="w-full border rounded-lg px-4 py-3"
+                  value={form[field]}
+                  onChange={(e) =>
+                    setForm({ ...form, [field]: e.target.value })
+                  }
+                />
+              ))}
+
+              <select
+                required
+                className="w-full border rounded-lg px-4 py-3"
+                value={form.size}
+                onChange={(e) =>
+                  setForm({ ...form, size: e.target.value })
+                }
+              >
+                <option value="">Company Size</option>
+                <option>1–20</option>
+                <option>21–50</option>
+                <option>51–200</option>
+                <option>200+</option>
+              </select>
+
+              <button
+                disabled={loading}
+                className="w-full bg-black text-white py-3 rounded-lg font-semibold disabled:opacity-60"
+              >
+                {loading ? "Submitting..." : "Submit Request"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -169,7 +247,11 @@ export default function HomePage() {
 
 function Row({ label, value, highlight }) {
   return (
-    <div className={`flex justify-between ${highlight ? "text-green-600 font-medium" : ""}`}>
+    <div
+      className={`flex justify-between ${
+        highlight ? "text-green-600 font-medium" : ""
+      }`}
+    >
       <span>{label}</span>
       <span>{value}</span>
     </div>

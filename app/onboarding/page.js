@@ -2,13 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 export default function OnboardingPage() {
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState("");
   const [file, setFile] = useState(null);
+  const [inviteCode, setInviteCode] = useState(""); // ✅ NEW
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
@@ -23,9 +32,11 @@ export default function OnboardingPage() {
 
       setUser(u);
 
-      // Skip onboarding if already verified
       const snap = await getDoc(doc(db, "users", u.uid));
-      if (snap.exists() && snap.data().documentVerified) {
+      if (
+        snap.exists() &&
+        snap.data().verificationStatus === "approved"
+      ) {
         router.push("/employee");
       }
     });
@@ -37,7 +48,6 @@ export default function OnboardingPage() {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-
     if (!selectedFile) return;
 
     if (
@@ -57,11 +67,11 @@ export default function OnboardingPage() {
     setStatus("");
   };
 
-  /* ---------------- MOCK VERIFICATION (FREE) ---------------- */
+  /* ---------------- ONBOARDING ---------------- */
 
   const handleUpload = async () => {
-    if (!file || !user) {
-      setStatus("❌ Please select a file");
+    if (!file || !user || !inviteCode) {
+      setStatus("❌ Please upload document and enter invite code");
       return;
     }
 
@@ -69,27 +79,46 @@ export default function OnboardingPage() {
     setStatus("🔍 Verifying document with AI...");
 
     try {
-      // ⏳ Simulate AI processing delay
+      // simulate AI delay
       await new Promise((res) => setTimeout(res, 1500));
 
-      // ✅ Mock extracted values
+      // 🔒 MOCK AI OUTPUT (salary only)
       const extractedSalary = 30000;
-      const extractedEmployer = "Kanper Startup";
 
-      setStatus(
-        `✅ Document verified! Extracted: Salary ₹${extractedSalary}, Employer: ${extractedEmployer}`
+      /* -------- VALIDATE INVITE CODE -------- */
+      const q = query(
+        collection(db, "employers"),
+        where("employerId", "==", inviteCode)
       );
 
-      // ✅ Update Firestore (FREE)
-      await updateDoc(doc(db, "users", user.uid), {
-        documentVerified: true,
-        documentVerifiedAt: new Date(),
-        monthlySalary: extractedSalary,
-        employerName: extractedEmployer,
-        daysWorked: 0,
-      });
+      const snap = await getDocs(q);
 
-      // ➡️ Redirect to employee dashboard
+      if (snap.empty) {
+        setStatus("❌ Invalid invite code. Please check with employer.");
+        setUploading(false);
+        return;
+      }
+
+      const employerData = snap.docs[0].data();
+
+      /* -------- LINK EMPLOYEE -------- */
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          employerId: employerData.employerId,
+          employerName: employerData.company,
+          monthlySalary: extractedSalary,
+          verificationStatus: "pending",
+          documentVerified: false,
+          documentUploadedAt: new Date(),
+        },
+        { merge: true }
+      );
+
+      setStatus(
+        `✅ Linked to ${employerData.company}. Waiting for employer approval.`
+      );
+
       setTimeout(() => {
         router.push("/employee");
       }, 1500);
@@ -116,6 +145,20 @@ export default function OnboardingPage() {
         </div>
 
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 space-y-6">
+          {/* INVITE CODE */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">
+              Employer Invite Code
+            </label>
+            <input
+              placeholder="e.g. EMP-79875"
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+            />
+          </div>
+
+          {/* DOCUMENT */}
           <div>
             <h2 className="text-xl font-semibold mb-4">
               📄 Document Upload
@@ -132,17 +175,11 @@ export default function OnboardingPage() {
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <label
-                htmlFor="file-upload"
-                className="cursor-pointer block"
-              >
+              <label htmlFor="file-upload" className="cursor-pointer block">
                 {file ? (
                   <div>
                     <p className="text-green-400 mb-2">✓ File selected</p>
                     <p className="text-sm text-gray-400">{file.name}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {(file.size / 1024).toFixed(2)} KB
-                    </p>
                   </div>
                 ) : (
                   <div>
@@ -176,9 +213,9 @@ export default function OnboardingPage() {
           <button
             onClick={handleUpload}
             disabled={!file || uploading}
-            className="w-full bg-white text-black py-3 rounded-lg font-semibold hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-white text-black py-3 rounded-lg font-semibold hover:bg-gray-200 disabled:opacity-50"
           >
-            {uploading ? "Processing..." : "Verify Document"}
+            {uploading ? "Processing..." : "Verify & Continue"}
           </button>
 
           <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4">
@@ -186,7 +223,7 @@ export default function OnboardingPage() {
               🔒 Privacy & Security
             </h3>
             <ul className="text-sm text-gray-400 space-y-1">
-              <li>• Documents are handled securely</li>
+              <li>• Invite code ensures correct employer mapping</li>
               <li>• Verification is simulated for MVP</li>
               <li>• Real AI verification is part of roadmap</li>
             </ul>
