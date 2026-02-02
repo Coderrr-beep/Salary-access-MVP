@@ -50,12 +50,7 @@ export default function Navbar() {
             </Link>
           ) : (
             <>
-              <Link
-                href="/employee"
-                className="text-gray-300 hover:text-white"
-              >
-                Dashboard
-              </Link>
+              
 
               <button
                 onClick={handleLogout}

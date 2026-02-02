@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // 👈 ADDED
   const [role, setRole] = useState("employee");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,12 +33,11 @@ export default function LoginPage() {
       const ref = doc(db, "users", uid);
       const snap = await getDoc(ref);
 
-      // 🔧 AUTO-FIX missing profile (IMPORTANT)
       if (!snap.exists()) {
         await setDoc(ref, {
           uid,
           email,
-          role: "employer", // fallback for demo
+          role: "employer",
           createdAt: new Date(),
         });
       }
@@ -107,13 +107,24 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          {/* PASSWORD WITH SHOW / HIDE */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded pr-14"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-white"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
 
           <div className="flex gap-4 text-sm">
             <label>
@@ -138,14 +149,16 @@ export default function LoginPage() {
 
           <button
             onClick={handleLogin}
-            className="w-full bg-white text-black py-2 rounded font-semibold"
+            disabled={loading}
+            className="w-full bg-white text-black py-2 rounded font-semibold disabled:opacity-60"
           >
             Login
           </button>
 
           <button
             onClick={handleSignup}
-            className="w-full border border-gray-600 py-2 rounded font-semibold"
+            disabled={loading}
+            className="w-full border border-gray-600 py-2 rounded font-semibold disabled:opacity-60"
           >
             Sign Up
           </button>
