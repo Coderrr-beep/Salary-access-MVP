@@ -21,7 +21,7 @@ export default function EmployersPage() {
 
         const data = snapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data(),
+          ...doc.data(), // includes employerCode automatically
         }));
 
         setEmployers(data);
@@ -75,7 +75,16 @@ export default function EmployersPage() {
                     <h3 className="text-lg font-semibold">
                       {emp.company}
                     </h3>
-                    <p className="text-sm text-gray-400">
+
+                    {/* 👇 EMPLOYER CODE ADDED */}
+                    <p className="text-xs text-gray-400 mt-1">
+                      Employer Code:{" "}
+                      <span className="font-mono text-gray-200">
+                        {emp.employerCode || "—"}
+                      </span>
+                    </p>
+
+                    <p className="text-sm text-gray-400 mt-1">
                       Employer ID: {emp.employerId}
                     </p>
                   </div>
@@ -84,12 +93,15 @@ export default function EmployersPage() {
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm">
-                  <Info label="Contact" value={emp.contactName} />
-                  <Info label="Email" value={emp.contactEmail} />
-                  <Info label="Employees" value={emp.totalEmployees} />
+                  <Info label="Contact" value={emp.contactName || "—"} />
+                  <Info label="Email" value={emp.contactEmail || "—"} />
+                  <Info
+                    label="Employees"
+                    value={emp.totalEmployees ?? 0}
+                  />
                   <Info
                     label="Total Withdrawn"
-                    value={`₹${emp.totalWithdrawn}`}
+                    value={`₹${emp.totalWithdrawn ?? 0}`}
                   />
                 </div>
 
@@ -113,7 +125,7 @@ export default function EmployersPage() {
 function StatusBadge({ status }) {
   return (
     <span className="text-xs px-3 py-1 rounded-full bg-green-500 text-black font-semibold">
-      {status.toUpperCase()}
+      {status?.toUpperCase() || "ACTIVE"}
     </span>
   );
 }

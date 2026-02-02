@@ -12,6 +12,11 @@ import {
   doc,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  AnimatedDonutChart,
+  AnimatedBarChart,
+} from "@/components/Charts";
 
 export default function EmployerDashboard() {
   const [employer, setEmployer] = useState(null);
@@ -132,14 +137,139 @@ export default function EmployerDashboard() {
         Verify Employees
       </button>
 
-      {/* STATS */}
-      <div className="grid md:grid-cols-5 gap-6 mb-12">
-        <Stat title="Total Employees" value={employees.length} />
-        <Stat title="Active Employees" value={activeEmployees} />
-        <Stat title="Pending Verifications" value={pendingVerifications} />
-        <Stat title="Withdrawals" value={withdrawals.length} />
-        <Stat title="Total Advanced" value={`₹${totalAdvanced}`} />
-      </div>
+      {/* STATS + CHARTS */}
+      <motion.div 
+        className="grid lg:grid-cols-3 gap-6 mb-12 items-stretch"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="lg:col-span-2 grid md:grid-cols-3 gap-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Stat title="Total Employees" value={employees.length} />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Stat title="Active Employees" value={activeEmployees} />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Stat title="Pending Verifications" value={pendingVerifications} />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Stat title="Withdrawals" value={withdrawals.length} />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Stat title="Total Advanced" value={`₹${totalAdvanced.toLocaleString()}`} />
+          </motion.div>
+        </div>
+
+        <motion.div 
+          className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 flex flex-col gap-6 shadow-2xl"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+        >
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            Workforce Snapshot
+          </h2>
+          
+          <div className="flex items-center gap-6">
+            <AnimatedDonutChart
+              value={activeEmployees}
+              max={Math.max(employees.length || 1, activeEmployees || 1)}
+              label="Approved"
+              color="#22c55e"
+              secondaryColor="#1f2937"
+              size={120}
+            />
+            <div className="flex-1">
+              <AnimatedBarChart
+                data={[
+                  {
+                    label: "Active",
+                    value: activeEmployees || 0,
+                    color: "#22c55e",
+                  },
+                  {
+                    label: "Pending",
+                    value: pendingVerifications || 0,
+                    color: "#eab308",
+                  },
+                  {
+                    label: "Adv. (k)",
+                    value: Math.round((totalAdvanced || 0) / 1000),
+                    color: "#38bdf8",
+                  },
+                ]}
+                height={140}
+              />
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* ENHANCED BAR CHART SECTION */}
+      <motion.div 
+        className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 mb-12 shadow-2xl"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.6 }}
+      >
+        <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-2">
+          <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+          Team Analytics
+        </h2>
+        <AnimatedBarChart
+          data={[
+            {
+              label: "Active",
+              value: activeEmployees || 0,
+              color: "#22c55e",
+            },
+            {
+              label: "Pending",
+              value: pendingVerifications || 0,
+              color: "#eab308",
+            },
+            {
+              label: "Total",
+              value: employees.length || 0,
+              color: "#6366f1",
+            },
+            {
+              label: "Withdrawals",
+              value: withdrawals.length || 0,
+              color: "#f59e0b",
+            },
+            {
+              label: "Adv. (₹k)",
+              value: Math.round((totalAdvanced || 0) / 1000),
+              color: "#38bdf8",
+            },
+          ]}
+          height={200}
+        />
+      </motion.div>
 
       {/* EMPLOYER ASSURANCE */}
       <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-8 mb-12">

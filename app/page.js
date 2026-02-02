@@ -5,6 +5,10 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  AnimatedDonutChart,
+  AnimatedBarChart,
+} from "@/components/Charts";
 
 export default function HomePage() {
   const [open, setOpen] = useState(false);
@@ -96,10 +100,31 @@ export default function HomePage() {
           <div className="relative bg-white text-black rounded-2xl p-8 shadow-2xl">
             <h3 className="font-semibold text-lg mb-6">Employee Snapshot</h3>
 
-            <div className="space-y-3 text-sm">
-              <Row label="Monthly Salary" value="₹30,000" />
-              <Row label="Earned till date" value="₹12,000" highlight />
-              <Row label="Available now" value="₹5,000" />
+            <div className="flex flex-col md:flex-row gap-6 items-center">
+              <AnimatedDonutChart
+                value={12000}
+                max={30000}
+                label="Earned this month"
+                color="#22c55e"
+                secondaryColor="#e5e7eb"
+              />
+
+              <div className="flex-1 space-y-3 text-sm">
+                <Row label="Monthly Salary" value="₹30,000" />
+                <Row label="Earned till date" value="₹12,000" highlight />
+                <Row label="Available now" value="₹5,000" />
+
+                <div className="mt-4">
+                  <AnimatedBarChart
+                    data={[
+                      { label: "Earned", value: 12, color: "#22c55e" },
+                      { label: "Balance", value: 18, color: "#3b82f6" },
+                      { label: "Withdrawn", value: 5, color: "#f97316" },
+                    ]}
+                    maxValue={30}
+                  />
+                </div>
+              </div>
             </div>
 
             <button

@@ -10,6 +10,7 @@ import {
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { AnimatedDonutChart, AnimatedBarChart } from "@/components/Charts";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -47,26 +48,46 @@ export default function AdminDashboard() {
       );
 
       const employers = employerSnap.docs.map((d) => d.data());
-
       const activeEmployers = employers.filter(
         (e) => e.status === "active"
       ).length;
 
-      const totalWithdrawn = employers.reduce(
-        (sum, e) => sum + (e.totalWithdrawn || 0),
+      /* ================= USERS (EMPLOYEES) ================= */
+      const usersSnap = await getDocs(collection(db, "users"));
+      const users = usersSnap.docs.map((d) => d.data());
+
+      const employees = users.filter(
+        (u) => u.role === "employee" && u.employerId
+      );
+
+      const employeesPerEmployer = {};
+      employees.forEach((emp) => {
+        employeesPerEmployer[emp.employerId] =
+          (employeesPerEmployer[emp.employerId] || 0) + 1;
+      });
+
+      const employeeRevenue = Object.values(employeesPerEmployer).reduce(
+        (sum, count) => sum + count * 500,
         0
       );
 
-      const revenue = totalWithdrawn > 0
-        ? Math.floor(totalWithdrawn / 1000) * 20
-        : 0;
+      /* ================= WITHDRAWALS ================= */
+      const withdrawalSnap = await getDocs(collection(db, "withdrawals"));
+      const withdrawals = withdrawalSnap.docs.map((d) => d.data());
+
+      const totalWithdrawn = withdrawals.reduce(
+        (sum, w) => sum + (w.amount || 0),
+        0
+      );
+
+      const transactionRevenue = withdrawals.length * 20;
 
       setStats({
         demoRequests: demoRequests.length,
         acceptedEmployers: accepted,
         activeEmployers,
         totalWithdrawn,
-        revenue,
+        revenue: transactionRevenue + employeeRevenue,
       });
 
       setRecentEmployers(employers.slice(0, 5));
@@ -99,18 +120,71 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* KPI CARDS */}
-      <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <KPI title="Demo Requests" value={stats.demoRequests} />
-        <KPI title="Accepted Startups" value={stats.acceptedEmployers} />
-        <KPI title="Active Employers" value={stats.activeEmployers} />
-        <KPI title="Total Withdrawn" value={`₹${stats.totalWithdrawn}`} />
-        <KPI title="Platform Revenue" value={`₹${stats.revenue}`} />
-      </div>
+      {/* KPI + CHARTS */}
+      <motion.div
+        className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-6 items-stretch"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="lg:col-span-2 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { title: "Demo Requests", value: stats.demoRequests },
+            { title: "Accepted Startups", value: stats.acceptedEmployers },
+            { title: "Active Employers", value: stats.activeEmployers },
+            {
+              title: "Total Withdrawn",
+              value: `₹${stats.totalWithdrawn.toLocaleString()}`,
+            },
+            {
+              title: "Platform Revenue",
+              value: `₹${stats.revenue.toLocaleString()}`,
+            },
+          ].map((item) => (
+            <KPI key={item.title} title={item.title} value={item.value} />
+          ))}
+        </div>
+
+        <motion.div
+          className="bg-gray-900 border border-gray-700 rounded-2xl p-6 flex flex-col gap-4"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h2 className="text-sm font-semibold text-gray-200">
+            Platform Snapshot
+          </h2>
+
+          <div className="flex items-center gap-4">
+            <AnimatedDonutChart
+              value={stats.acceptedEmployers}
+              max={Math.max(
+                stats.demoRequests || 1,
+                stats.acceptedEmployers || 1
+              )}
+              label="Demo → Active conversion"
+              color="#22c55e"
+              secondaryColor="#1f2937"
+            />
+
+            <div className="flex-1">
+              <AnimatedBarChart
+                data={[
+                  { label: "Demo", value: stats.demoRequests, color: "#38bdf8" },
+                  { label: "Active", value: stats.activeEmployers, color: "#22c55e" },
+                  {
+                    label: "Revenue (k)",
+                    value: Math.round(stats.revenue / 1000),
+                    color: "#f97316",
+                  },
+                ]}
+              />
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
 
       {/* TABLES */}
       <div className="max-w-7xl mx-auto mt-14 grid lg:grid-cols-2 gap-10">
-        {/* RECENT EMPLOYERS */}
         <Section title="Recent Employers">
           {loading ? (
             <Loader />
@@ -118,16 +192,13 @@ export default function AdminDashboard() {
             <Empty />
           ) : (
             recentEmployers.map((e, i) => (
-              <Row
-                key={i}
-                left={e.company}
-                right={`₹${e.totalWithdrawn || 0}`}
-              />
+              <div key={i} className="text-sm text-gray-300">
+                {e.company}
+              </div>
             ))
           )}
         </Section>
 
-        {/* RECENT DEMO REQUESTS */}
         <Section title="Recent Demo Requests">
           {loading ? (
             <Loader />
@@ -153,9 +224,9 @@ export default function AdminDashboard() {
 function KPI({ title, value }) {
   return (
     <motion.div
+      className="bg-gray-900 border border-gray-700 rounded-2xl p-6"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-900 border border-gray-700 rounded-2xl p-6"
     >
       <p className="text-sm text-gray-400">{title}</p>
       <h3 className="text-2xl font-bold mt-2">{value}</h3>
@@ -182,13 +253,9 @@ function Row({ left, right }) {
 }
 
 function Loader() {
-  return (
-    <div className="h-20 bg-gray-800 rounded-lg animate-pulse" />
-  );
+  return <div className="h-20 bg-gray-800 rounded-lg animate-pulse" />;
 }
 
 function Empty() {
-  return (
-    <p className="text-sm text-gray-500">No data available</p>
-  );
+  return <p className="text-sm text-gray-500">No data available</p>;
 }

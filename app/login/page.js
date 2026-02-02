@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { auth, db } from "@/lib/firebase";
 import {
   signInWithEmailAndPassword,
@@ -15,17 +16,14 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // 👈 ADDED
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("employee");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /* ---------------- LOGIN ---------------- */
-
   const handleLogin = async () => {
     setError("");
     setLoading(true);
-
     try {
       const res = await signInWithEmailAndPassword(auth, email, password);
       const uid = res.user.uid;
@@ -43,22 +41,18 @@ export default function LoginPage() {
       }
 
       const userData = (await getDoc(ref)).data();
-
       if (userData.role === "employee") router.push("/employee");
       else router.push("/employer");
-    } catch (err) {
+    } catch {
       setError("Invalid email or password");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------------- SIGNUP ---------------- */
-
   const handleSignup = async () => {
     setError("");
     setLoading(true);
-
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
       const uid = res.user.uid;
@@ -83,50 +77,74 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">
-          SalarySync Login
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white flex items-center justify-center p-4">
+      <motion.div
+        className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 w-full max-w-md shadow-2xl"
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <motion.h1
+          className="text-3xl font-bold mb-2 text-center bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          SalarySync
+        </motion.h1>
 
-        <div className="space-y-4">
+        <motion.p
+          className="text-center text-gray-400 mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          Welcome back
+        </motion.p>
+
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
           {role === "employee" && (
-            <input
+            <motion.input
               placeholder="Full Name"
-              className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded"
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
             />
           )}
 
-          <input
+          <motion.input
             type="email"
             placeholder="Email"
-            className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded"
+            className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
-          {/* PASSWORD WITH SHOW / HIDE */}
-          <div className="relative">
+          <motion.div className="relative">
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className="w-full px-4 py-2 bg-gray-800 border border-gray-600 rounded pr-14"
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg pr-14"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"
             >
               {showPassword ? "Hide" : "Show"}
             </button>
-          </div>
+          </motion.div>
 
-          <div className="flex gap-4 text-sm">
+          <motion.div className="flex gap-4 text-sm">
             <label>
               <input
                 type="radio"
@@ -143,27 +161,27 @@ export default function LoginPage() {
               />{" "}
               Employer
             </label>
-          </div>
+          </motion.div>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
 
-          <button
+          <motion.button
             onClick={handleLogin}
             disabled={loading}
-            className="w-full bg-white text-black py-2 rounded font-semibold disabled:opacity-60"
+            className="w-full bg-green-400 text-black py-3 rounded-lg font-semibold"
           >
-            Login
-          </button>
+            {loading ? "Loading..." : "Login"}
+          </motion.button>
 
-          <button
+          <motion.button
             onClick={handleSignup}
             disabled={loading}
-            className="w-full border border-gray-600 py-2 rounded font-semibold disabled:opacity-60"
+            className="w-full border border-gray-600 py-3 rounded-lg font-semibold"
           >
             Sign Up
-          </button>
-        </div>
-      </div>
+          </motion.button>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
